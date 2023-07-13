@@ -2,11 +2,8 @@
 //!
 //! `github_issue` is a minimal utility to create and update issues within Github.
 
-// TODO: octocrab::issue with owner and repo as param instead of client
 #[derive(Eq, PartialEq, Debug)]
 pub struct Config {
-    pub owner: String,
-    pub repo: String,
     // create and update
     pub title: Option<String>,
     pub body: Option<String>,
@@ -19,6 +16,32 @@ pub struct Config {
     pub state: Option<octocrab::models::IssueState>
 }
 
+/// Instantiate a reusable Octocrab issues object with input authentication, and an input owner and repo.
+///
+/// # Examples
+///
+/// ```
+/// let issues =
+/// ```
+pub fn new_issues<'octo>(pat: Option<String>, owner: &str, repo: &str) -> Result<(), ()> {
+//Result<octocrab::issues::IssueHandler<'octo>, ()> {
+    // instantiate client
+    let client = match pat {
+        Some(pat) => octocrab::Octocrab::builder()
+        .personal_token(pat)
+        .build()
+        .unwrap(),
+        None => octocrab::Octocrab::default(),
+    };
+    // initalize and return issues
+    let issues = client.issues(owner, repo);
+    let issue = read(1, issues);
+
+    println!("{:#?}", issue);
+
+    return Ok(())
+}
+
 /// Crate a Github Issue according to configuration.
 ///
 /// # Examples
@@ -26,17 +49,8 @@ pub struct Config {
 /// ```
 /// TODO
 /// ```
-pub fn create(config: Config, client: octocrab::Octocrab) -> Result<octocrab::Result<()>, ()> {
-    // create issue and assign octocrab result
-    let issue = client.issues(config.owner, config.repo).create(config.title)
-        .body(config.body)
-        .milestone(config.milestone)
-        .labels(config.labels)
-        .assignees(config.assignees)
-        // send the request
-        .send();
-
-    Ok(issue, )
+pub fn create(config: Config, issues: octocrab::issues::IssueHandler) -> Result<(), ()> {
+    Ok(())
 }
 
 /// Read a Github Issue according to configuration.
@@ -47,11 +61,11 @@ pub fn create(config: Config, client: octocrab::Octocrab) -> Result<octocrab::Re
 /// TODO
 /// ```
 
-pub fn read(config: Config, client: octocrab::Octocrab) -> Result<(), ()> {
+pub async fn read<'octo>(num: u64, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, ()> {
     // read issue
-    let issue = client.issues(config.owner, config.repo).get(config.number);
+    let issue = issues.get(num).await;
 
-    Ok(())
+    Ok(issue)
 }
 
 /// Update a Github Issue according to configuration.
@@ -62,15 +76,6 @@ pub fn read(config: Config, client: octocrab::Octocrab) -> Result<(), ()> {
 /// TODO
 /// ```
 
-pub fn update(config: Config, client: octocrab::Octocrab) -> Result<(), ()> {
-    let issue = client.issues(config.owner, config.repo).update(config.number)
-        .body(config.body)
-        .state(config.state)
-        .milestone(config.milestone)
-        .labels(config.labels)
-        .assignees(config.assignees)
-        // send the request
-        .send();
-
+pub fn update(config: Config, issues: octocrab::issues::IssueHandler) -> Result<(), ()> {
     Ok(())
 }

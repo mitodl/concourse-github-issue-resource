@@ -2,8 +2,6 @@ mod github_issue;
 
 fn main() -> Result<(), ()> {
     let config = github_issue::Config{
-        owner: String::from("mschuchard"),
-        repo: String::from("dummy/dummy"),
         title: Some(String::from("testing")),
         body: Some(String::from("go approve your Concourse manual step!")),
         milestone: Some(1000),
@@ -13,12 +11,19 @@ fn main() -> Result<(), ()> {
         state: None,
     };
 
-    let client = octocrab::Octocrab::default();
-
-    match github_issue::create(config, client) {
+    match github_issue::read(1, issues) {
         Ok(_) => println!("success"),
         Err(_) => eprintln!("failure"),
     }
+
+    async fn run() -> octocrab::Result<()> {
+        let octocrab = octocrab::Octocrab::default();
+        let issue = octocrab.issues("mschuchard", "puppet-check").get(3).await?;
+        println!("{:#?}", issue);
+        Ok(())
+    }
+    let octocrab = octocrab::Octocrab::default();
+    let issue = octocrab.issues("mschuchard", "puppet-check").list().send();
 
     Ok(())
 }
