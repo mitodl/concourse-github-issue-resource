@@ -2,7 +2,9 @@ mod github_issue;
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
-    github_issue::main(None, "mschuchard", "puppet-check", github_issue::Action::Read).await?;
+    // instantiate issue
+    let gh_issue = github_issue::Issue::new(None, "mschuchard", "puppet-check", None, None, None, None, Some(1), None);
+    gh_issue.main(github_issue::Action::Read).await?;
 
     Ok(())
 }
