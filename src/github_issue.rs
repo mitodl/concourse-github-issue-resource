@@ -14,8 +14,8 @@ pub struct Issue<'issue> {
     pat: Option<&'issue str>,
     owner: &'issue str,
     repo: &'issue str,
-    // create and update
-    title: Option<String>,
+    // create and update (create expects String instead of &str, and update expects &[String] instead of Vec<>)
+    title: Option<&'issue str>,
     body: Option<&'issue str>,
     labels: Option<Vec<String>>,
     assignees: Option<Vec<String>>,
@@ -31,9 +31,9 @@ impl<'issue> Issue<'issue> {
     /// # Examples
     ///
     /// ```
-    /// let gh_issue = Issue::new(None, String::from("my_org"), String::from("my_repo"), None, None, None, None, Some(100), None);
+    /// let gh_issue = Issue::new(None, "my_org", "my_repo", None, None, None, None, Some(100), None);
     /// ```
-    pub fn new(pat: Option<&'issue str>, owner: &'issue str, repo: &'issue str, title: Option<String>, body: Option<&'issue str>, labels: Option<Vec<String>>, assignees: Option<Vec<String>>, number: Option<u64>, state: Option<octocrab::models::IssueState>) -> Self {
+    pub fn new(pat: Option<&'issue str>, owner: &'issue str, repo: &'issue str, title: Option<&'issue str>, body: Option<&'issue str>, labels: Option<Vec<String>>, assignees: Option<Vec<String>>, number: Option<u64>, state: Option<octocrab::models::IssueState>) -> Self {
         // return instantiated github issue
         return Self { pat, owner, repo, title, body, labels, assignees, number, state }
     }
@@ -58,16 +58,26 @@ impl<'issue> Issue<'issue> {
         // execute action
         match action {
             // create an issue
-            Action::Create => println!("create is currently unsupported"),
+            Action::Create => {
+                match self.create(issues).await {
+                    Ok(issue) => println!("{issue:#?}"),
+                    Err(error) => println!("{error}"),
+                }
+            },
             // read an issue state
             Action::Read => {
                 match self.read_state(issues).await {
                     Ok(state) => println!("{state:#?}"),
                     Err(error) => println!("{error}"),
                 }
-            }
+            },
             // update an issue
-            Action::Update => println!("update is currently unsupported"),
+            Action::Update => {
+                match self.update(issues).await {
+                    Ok(issue) => println!("{issue:#?}"),
+                    Err(error) => println!("{error}"),
+                }
+            },
         }
 
         Ok(())
@@ -86,30 +96,34 @@ impl<'issue> Issue<'issue> {
             // title specified
             Some(title) => {
                 // build the issue
-                match issues.create(title)
-                    // ... with optional parameters
-                    .body(self.body)
-                    .labels(self.labels)
-                    .assignees(self.assignees)
-                    // send and await the issue
-                    .send()
-                    .await
-                {
+                let mut issue = issues.create(title);
+                // ... with optional parameters
+                if self.body.is_some() {
+                    issue = issue.body(self.body.unwrap());
+                }
+                if self.labels.is_some() {
+                    issue = issue.labels(self.labels.clone().unwrap());
+                }
+                if self.assignees.is_some() {
+                    issue = issue.labels(self.assignees.clone().unwrap());
+                }
+                // send and await the issue
+                match issue.send().await {
                     // return created issue
                     Ok(issue) => return Ok(issue),
                     // issue could not be created
                     Err(error) => {
                         println!("the issue could not be created");
                         println!("{error}");
-                        return Err("issue uncreated");
-                    }
+                        return Err("issue not created");
+                    },
                 }
-            }
+            },
             // title unspecified
             None => {
                 println!("a title was not specified, and so an issue could not be created");
                 return Err("title unspecified");
-            }
+            },
         }
     }
 
@@ -147,7 +161,7 @@ impl<'issue> Issue<'issue> {
         }
     }
 
-    /*/// Update a Github Issue according to configuration.
+    /// Update a Github Issue according to configuration.
     ///
     /// # Examples
     ///
@@ -155,21 +169,51 @@ impl<'issue> Issue<'issue> {
     /// TODO
     /// ```
 
-    async fn update<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<(), ()> {
-        let issue = issues
-        .update(1234u64)
-        // Optional Parameters
-        .title("Updated title")
-        .body("New body")
-        .state(models::IssueState::Closed)
-        .assignees(&[String::from("ferris")])
-        .labels(&[String::from("help wanted"), String::from("good first issue")])
-        // Send the request
-        .send()
-        .await?;
-
-        Ok(())
-    }*/
+    // TODO: could get and then append instead of overwriting
+    async fn update<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
+        // validate an issue number was specified
+        match self.number {
+            // issue number specified
+            Some(number) => {
+                // build the issue
+                let mut issue = issues.update(number);
+                // ... with optional parameters
+                if self.title.is_some() {
+                    issue = issue.title(self.title.unwrap());
+                }
+                if self.body.is_some() {
+                    issue = issue.body(self.body.unwrap());
+                }
+                if self.state.is_some() {
+                    issue = issue.state(self.state.clone().unwrap());
+                }
+                // TODO requires converting Option<Vec<String>> to &'a [String] which is horrendous
+                /*if self.labels.is_some() {
+                    let labels = self.labels.clone().unwrap();
+                    issue = issue.labels(&labels[..]);
+                }
+                if self.assignees.is_some() {
+                    issue = issue.labels(&self.assignees.unwrap());
+                }*/
+                // send and await the issue
+                match issue.send().await {
+                    // return updated issue
+                    Ok(issue) => return Ok(issue),
+                    // issue number probably does not exist, or some other error
+                    Err(error) => {
+                        println!("the issue number {number} could not be updated");
+                        println!("{error}");
+                        return Err("issue not updated");
+                    },
+                }
+            },
+            // issue number unspecified
+            None => {
+                println!("an issue number was not specified, and so an issue could not be updated");
+                return Err("issue number unspecified");
+            },
+        }
+    }
 }
 
 
