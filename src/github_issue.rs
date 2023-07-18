@@ -2,14 +2,26 @@
 //!
 //! `github_issue` is a minimal utility to create and update issues within Github.
 
-pub enum Action {
+// allowed operations for github issue interactions
+#[non_exhaustive]
+pub(crate) enum Action {
     Create,
     Read,
     Update
 }
 
+// convert string to IssueState without trait implementations because not allowed TODO error
+fn string_to_issue_state(param: &str) -> octocrab::models::IssueState {
+    match param {
+        "Open" => octocrab::models::IssueState::Open,
+        "Closed" => octocrab::models::IssueState::Closed,
+        &_ => todo!(),
+    }
+}
+
+// struct for general interfacing with module
 #[derive(Eq, PartialEq, Debug)]
-pub struct Issue<'issue> {
+pub(crate) struct Issue<'issue> {
     // client
     pat: Option<&'issue str>,
     owner: &'issue str,
@@ -33,9 +45,14 @@ impl<'issue> Issue<'issue> {
     /// ```
     /// let gh_issue = Issue::new(None, "my_org", "my_repo", None, None, None, None, Some(100), None);
     /// ```
-    pub fn new(pat: Option<&'issue str>, owner: &'issue str, repo: &'issue str, title: Option<&'issue str>, body: Option<&'issue str>, labels: Option<Vec<String>>, assignees: Option<Vec<String>>, number: Option<u64>, state: Option<octocrab::models::IssueState>) -> Self {
+    pub(crate) fn new(pat: Option<&'issue str>, owner: &'issue str, repo: &'issue str, title: Option<&'issue str>, body: Option<&'issue str>, labels: Option<Vec<String>>, assignees: Option<Vec<String>>, number: Option<u64>, state_string: Option<String>) -> Self {
+        // convert state from string to IssueState
+        let state = match state_string {
+            Some(state_string) => Some(string_to_issue_state(&state_string)),
+            None => None,
+        };
         // return instantiated github issue
-        return Self { pat, owner, repo, title, body, labels, assignees, number, state }
+        Self { pat, owner, repo, title, body, labels, assignees, number, state }
     }
 
     /// Instantiate a reusable Octocrab issues object with input authentication, and an input owner and repo.
@@ -43,9 +60,10 @@ impl<'issue> Issue<'issue> {
     /// # Examples
     ///
     /// ```
-    /// let issues =
+    /// let issue = gh_issue.main(Action::Read).await;
     /// ```
-    pub async fn main<'octo>(&self, action: Action) -> Result<(), ()> {
+    // TODO inconsistent returns
+    pub(crate) async fn main<'octo>(&self, action: Action) -> Result<octocrab::models::issues::Issue, &str> {
         // instantiate client and issues
         let client = match self.pat {
             Some(pat) => octocrab::Octocrab::builder()
@@ -55,41 +73,22 @@ impl<'issue> Issue<'issue> {
             None => octocrab::Octocrab::default(),
         };
         let issues = client.issues(self.owner, self.repo);
-        // execute action
-        match action {
+        // execute action and assign returned issue
+        let issue = match action {
             // create an issue
-            Action::Create => {
-                match self.create(issues).await {
-                    Ok(issue) => println!("{issue:#?}"),
-                    Err(error) => println!("{error}"),
-                }
-            },
+            Action::Create => self.create(issues).await?,
             // read an issue state
-            Action::Read => {
-                match self.read_state(issues).await {
-                    Ok(state) => println!("{state:#?}"),
-                    Err(error) => println!("{error}"),
-                }
-            },
+            Action::Read => self.read(issues).await?,
             // update an issue
-            Action::Update => {
-                match self.update(issues).await {
-                    Ok(issue) => println!("{issue:#?}"),
-                    Err(error) => println!("{error}"),
-                }
-            },
-        }
+            Action::Update => self.update(issues).await?,
+            // invalid action specified somehow
+            _ => return Err("invalid/unsupported action specified"),
+        };
 
-        Ok(())
+        Ok(issue)
     }
 
-    /// Crate a Github Issue according to configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// TODO
-    /// ```
+    // create a github issue according to configuration
     async fn create<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
         // validate a title was specified
         match self.title {
@@ -127,22 +126,15 @@ impl<'issue> Issue<'issue> {
         }
     }
 
-    /// Read a Github Issue according to configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// TODO
-    /// ```
-
-    async fn read_state<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::IssueState, &str> {
+    // read a github issue according to configuration
+    async fn read<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
         // validate an issue number was specified
         match self.number {
             // issue number specified
             Some(number) => {
                 // retrieve the issue with the handler
-                let issue = match issues.get(number).await {
-                    Ok(issue) => issue,
+                match issues.get(number).await {
+                    Ok(issue) => return Ok(issue),
                     // issue number probably does not exist, or some other error
                     Err(error) => {
                         println!("the issue number {number} could not be retrieved");
@@ -150,8 +142,6 @@ impl<'issue> Issue<'issue> {
                         return Err("unknown issue state");
                     },
                 };
-                // return the issue state
-                return Ok(issue.state);
             }
             // issue number unspecified
             None => {
@@ -161,14 +151,7 @@ impl<'issue> Issue<'issue> {
         }
     }
 
-    /// Update a Github Issue according to configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// TODO
-    /// ```
-
+    // update a github issue according to configuration
     // TODO: could get and then append instead of overwriting
     async fn update<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
         // validate an issue number was specified
@@ -215,6 +198,5 @@ impl<'issue> Issue<'issue> {
         }
     }
 }
-
 
 // TODO tests
