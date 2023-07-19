@@ -45,10 +45,20 @@ impl<'issue> Issue<'issue> {
     /// ```
     /// let gh_issue = Issue::new(None, "my_org", "my_repo", None, None, None, None, Some(100), None);
     /// ```
-    pub(crate) fn new(pat: Option<&'issue str>, owner: &'issue str, repo: &'issue str, title: Option<&'issue str>, body: Option<&'issue str>, labels: Option<Vec<String>>, assignees: Option<Vec<String>>, number: Option<u64>, state_string: Option<String>) -> Self {
+    pub(crate) fn new(
+        pat: Option<&'issue str>,
+        owner: &'issue str,
+        repo: &'issue str,
+        title: Option<&'issue str>,
+        body: Option<&'issue str>,
+        labels: Option<Vec<String>>,
+        assignees: Option<Vec<String>>,
+        number: Option<u64>,
+        state_string: Option<&'issue str>
+    ) -> Self {
         // convert state from string to IssueState
         let state = match state_string {
-            Some(state_string) => Some(string_to_issue_state(&state_string)),
+            Some(state_string) => Some(string_to_issue_state(state_string)),
             None => None,
         };
         // return instantiated github issue

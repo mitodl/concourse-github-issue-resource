@@ -8,7 +8,7 @@ use concourse_resource::IntoMetadataKV;
 
 // standard concourse structs
 
-// check input and (list) output, out output
+// check input and (vec seralized to list) output, out output
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Version {
     state: String,
@@ -32,6 +32,22 @@ pub(crate) struct Source {
     number: Option<u64>,
 }
 
+impl Source {
+    /// Readers
+    pub(crate) fn pat(&self) -> Option<String> {
+        return self.pat.clone()
+    }
+    pub(crate) fn owner(&self) -> String {
+        return self.owner.clone()
+    }
+    pub(crate) fn repo(&self) -> String {
+        return self.repo.clone()
+    }
+    pub(crate) fn number(&self) -> Option<u64> {
+        return self.number
+    }
+}
+
 // out input
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
@@ -43,19 +59,33 @@ pub(crate) struct OutParams {
     assignees: Option<Vec<String>>,
 }
 
-// out output
+impl OutParams {
+    /// Readers
+    pub(crate) fn title(&self) -> String {
+        return self.title.clone()
+    }
+    pub(crate) fn body(&self) -> Option<String> {
+        return self.body.clone()
+    }
+    pub(crate) fn labels(&self) -> Option<Vec<String>> {
+        return self.labels.clone()
+    }
+    pub(crate) fn assignees(&self) -> Option<Vec<String>> {
+        return self.assignees.clone()
+    }
+}
+
+// out output TODO ask for other desired information in metadata
 #[derive(Serialize, Debug, IntoMetadataKV)]
 pub(crate) struct OutMetadata {
     number: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    labels: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    assignees: Option<Vec<String>>,
+    labels: Vec<octocrab::models::Label>,
+    assignees: Vec<octocrab::models::Author>,
 }
 
 impl OutMetadata {
     /// Constructor
-    pub(crate) fn new(number: u64, labels: Option<Vec<String>>, assignees: Option<Vec<String>>) -> Self {
+    pub(crate) fn new(number: u64, labels: Vec<octocrab::models::Label>, assignees: Vec<octocrab::models::Author>) -> Self {
         OutMetadata{ number, labels, assignees }
     }
 }
