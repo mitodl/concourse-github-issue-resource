@@ -27,7 +27,7 @@ impl concourse_resource::Resource for GithubIssue {
             None => panic!("source is required for the Github Issue resource"),
         };
 
-        // if no number is specified in source then this resource should skip check step and cannot trigger
+        // if no number is specified in source then this resource execution should skip the check step and cannot trigger
         if source.number().is_none() {
             println!(
                 "no issue number was specified in source, and therefore the check step is skipped"
@@ -47,7 +47,7 @@ impl concourse_resource::Resource for GithubIssue {
             source.number(),
             None,
         );
-        // ...and read the octocrab issue
+        // ...and read the octocrab github issue
         let issue = match gh_issue.main(github_issue::Action::Read).await {
             Ok(issue) => issue,
             Err(error) => {
@@ -86,7 +86,7 @@ impl concourse_resource::Resource for GithubIssue {
     async fn resource_out(
         source: Option<Self::Source>,
         params: Option<Self::OutParams>,
-        _input_path: &str,
+        input_path: &str,
     ) -> concourse_resource::OutOutput<Self::Version, Self::OutMetadata> {
         // validate source and params
         let source = match source {
@@ -110,7 +110,7 @@ impl concourse_resource::Resource for GithubIssue {
             None,
             None,
         );
-        // ...and create the octocrab issue
+        // ...and create the octocrab github issue
         let issue = match gh_issue.main(github_issue::Action::Create).await {
             Ok(issue) => issue,
             Err(error) => {
@@ -119,7 +119,10 @@ impl concourse_resource::Resource for GithubIssue {
             }
         };
 
-        // TODO store issuue number somewhere for subsequent check step
+        // store issue number in file for subsequent check step
+        let file_path = format!("{input_path}/issue_number.txt");
+        std::fs::write(file_path, issue.number.to_string())
+            .expect("issue number could not be written to {file_path}");
 
         // return out step output
         concourse_resource::OutOutput {

@@ -10,12 +10,12 @@ pub(crate) enum Action {
     Update,
 }
 
-// convert string to IssueState without trait implementations because not allowed TODO error
-fn string_to_issue_state(param: &str) -> octocrab::models::IssueState {
+// convert string to IssueState without trait implementations because not allowed
+fn str_to_issue_state(param: &str) -> octocrab::models::IssueState {
     match param {
         "Open" => octocrab::models::IssueState::Open,
         "Closed" => octocrab::models::IssueState::Closed,
-        &_ => todo!(),
+        &_ => panic!("the issue state must be either Open or Closed"),
     }
 }
 
@@ -23,7 +23,7 @@ fn string_to_issue_state(param: &str) -> octocrab::models::IssueState {
 // the types correspond to octocrab when not advantageous otherwise
 #[derive(Eq, PartialEq, Debug)]
 pub(crate) struct Issue {
-    // client: OctocrabBuilder and issues::IssueHandler
+    // client and issues: OctocrabBuilder and issues::IssueHandler
     pat: Option<String>,
     owner: String,
     repo: String,
@@ -44,8 +44,9 @@ impl Issue {
     /// # Examples
     ///
     /// ```
-    /// let gh_issue = Issue::new(None, "my_org", "my_repo", None, None, None, None, Some(100), None);
+    /// let gh_issue = Issue::new(None, String::from("my_org"), String::from("my_repo"), None, None, None, None, Some(100), None);
     /// ```
+    // TODO impl into string from &str for convenience?
     pub(crate) fn new(
         pat: Option<String>,
         owner: String,
@@ -55,11 +56,11 @@ impl Issue {
         labels: Option<Vec<String>>,
         assignees: Option<Vec<String>>,
         number: Option<u64>,
-        state_string: Option<&str>,
+        state_str: Option<&str>,
     ) -> Self {
         // convert state from string to IssueState
-        let state = match state_string {
-            Some(state_string) => Some(string_to_issue_state(state_string)),
+        let state = match state_str {
+            Some(state_str) => Some(str_to_issue_state(state_str)),
             None => None,
         };
         // return instantiated github issue
@@ -81,9 +82,8 @@ impl Issue {
     /// # Examples
     ///
     /// ```
-    /// let issue = gh_issue.main(Action::Read).await;
+    /// let issue = gh_issue.main(Action::Read).await?;
     /// ```
-    // TODO inconsistent returns
     pub(crate) async fn main<'octo>(
         &self,
         action: Action,
@@ -232,4 +232,106 @@ impl Issue {
     }
 }
 
-// TODO tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_str_to_issue_state() {
+        // validates issue open and closed conversions
+        assert_eq!(
+            str_to_issue_state("Open"),
+            octocrab::models::IssueState::Open,
+            "failed to convert Open str to Open enum"
+        );
+
+        assert_eq!(
+            str_to_issue_state("Closed"),
+            octocrab::models::IssueState::Closed,
+            "failed to convert Closed str to Closed enum"
+        );
+    }
+
+    #[test]
+    fn test_issue_new() {
+        // validates basic read constructor
+        assert_eq!(
+            Issue::new(
+                None,
+                String::from("my_org"),
+                String::from("my_repo"),
+                None,
+                None,
+                None,
+                None,
+                Some(100),
+                None
+            ),
+            Issue {
+                pat: None,
+                owner: String::from("my_org"),
+                repo: String::from("my_repo"),
+                title: None,
+                body: None,
+                labels: None,
+                assignees: None,
+                number: Some(100),
+                state: None
+            },
+            "failed to construct Issue for read"
+        );
+
+        // validate basic create constructor
+        assert_eq!(
+            Issue::new(
+                None,
+                String::from("my_org"),
+                String::from("my_repo"),
+                Some(String::from("my issue")),
+                Some(String::from("my body")),
+                Some(vec![String::from("label")]),
+                Some(vec![String::from("assignee")]),
+                None,
+                None
+            ),
+            Issue {
+                pat: None,
+                owner: String::from("my_org"),
+                repo: String::from("my_repo"),
+                title: Some(String::from("my issue")),
+                body: Some(String::from("my body")),
+                labels: Some(vec![String::from("label")]),
+                assignees: Some(vec![String::from("assignee")]),
+                number: None,
+                state: None
+            },
+            "failed to construct Issue for create"
+        );
+    }
+
+    #[test]
+    fn test_issue_main() {
+        // validate issue returned when read from main
+        let test = async {
+            let gh_issue = Issue::new(
+                None,
+                String::from("mitodl"),
+                String::from("ol-infrastructure"),
+                None,
+                None,
+                None,
+                None,
+                Some(100),
+                None,
+            );
+            let issue = gh_issue.main(Action::Read).await;
+            assert_eq!(
+                issue.unwrap().state,
+                octocrab::models::IssueState::Closed,
+                "first issue from mitodl/ol-infrastructure not read and returned correctly",
+            );
+        };
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(test);
+    }
+}

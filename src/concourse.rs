@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use concourse_resource::IntoMetadataKV;
 
 // standard concourse structs
-
 // check input and (vec seralized to list) output, out output
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Version {
@@ -16,6 +15,12 @@ pub(crate) struct Version {
 
 impl Version {
     /// Constructor
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let version = Version::new(String::from("Open"));
+    /// ```
     pub(crate) fn new(state: String) -> Self {
         Version { state }
     }
@@ -24,7 +29,7 @@ impl Version {
 // check and out input
 #[derive(Deserialize, Debug)]
 pub(crate) struct Source {
-    // client (later converted to &str)
+    // client and issues
     pat: Option<String>,
     owner: String,
     repo: String,
@@ -85,6 +90,12 @@ pub(crate) struct OutMetadata {
 
 impl OutMetadata {
     /// Constructor
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let metadata = OutMetadata::new(10, !vec[String::from("triage")], !vec[String::from("myuser")];
+    /// ```
     pub(crate) fn new(
         number: u64,
         labels: Vec<octocrab::models::Label>,
