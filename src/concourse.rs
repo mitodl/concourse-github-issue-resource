@@ -14,7 +14,7 @@ pub(crate) struct Version {
     state: String,
 }
 
-impl Version{
+impl Version {
     /// Constructor
     pub(crate) fn new(state: String) -> Self {
         Version { state }
@@ -35,16 +35,16 @@ pub(crate) struct Source {
 impl Source {
     /// Readers
     pub(crate) fn pat(&self) -> Option<String> {
-        return self.pat.clone()
+        return self.pat.clone();
     }
     pub(crate) fn owner(&self) -> String {
-        return self.owner.clone()
+        return self.owner.clone();
     }
     pub(crate) fn repo(&self) -> String {
-        return self.repo.clone()
+        return self.repo.clone();
     }
     pub(crate) fn number(&self) -> Option<u64> {
-        return self.number
+        return self.number;
     }
 }
 
@@ -62,16 +62,16 @@ pub(crate) struct OutParams {
 impl OutParams {
     /// Readers
     pub(crate) fn title(&self) -> String {
-        return self.title.clone()
+        return self.title.clone();
     }
     pub(crate) fn body(&self) -> Option<String> {
-        return self.body.clone()
+        return self.body.clone();
     }
     pub(crate) fn labels(&self) -> Option<Vec<String>> {
-        return self.labels.clone()
+        return self.labels.clone();
     }
     pub(crate) fn assignees(&self) -> Option<Vec<String>> {
-        return self.assignees.clone()
+        return self.assignees.clone();
     }
 }
 
@@ -85,7 +85,15 @@ pub(crate) struct OutMetadata {
 
 impl OutMetadata {
     /// Constructor
-    pub(crate) fn new(number: u64, labels: Vec<octocrab::models::Label>, assignees: Vec<octocrab::models::Author>) -> Self {
-        OutMetadata{ number, labels, assignees }
+    pub(crate) fn new(
+        number: u64,
+        labels: Vec<octocrab::models::Label>,
+        assignees: Vec<octocrab::models::Author>,
+    ) -> Self {
+        OutMetadata {
+            number,
+            labels,
+            assignees,
+        }
     }
 }

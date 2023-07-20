@@ -1,17 +1,9 @@
+use concourse_resource::*;
+
 mod concourse;
 mod github_issue;
 
-struct GithubIssue{}
-
-#[tokio::main]
-async fn main() -> Result<(), ()> {
-    // instantiate issue
-    let gh_issue = github_issue::Issue::new(None, "mschuchard", "puppet-check", None, None, None, None, Some(1), None);
-    let issue = gh_issue.main(github_issue::Action::Read).await;
-    println!("{issue:#?}");
-
-    Ok(())
-}
+struct GithubIssue {}
 
 impl concourse_resource::Resource for GithubIssue {
     // implementtations for inputs and outputs
@@ -37,19 +29,31 @@ impl concourse_resource::Resource for GithubIssue {
 
         // if no number is specified in source then this resource should skip check step and cannot trigger
         if source.number().is_none() {
-            println!("no issue number was specified in source, and therefore the check step is skipped");
-            return vec![concourse::Version::new(String::from("Open"))]
+            println!(
+                "no issue number was specified in source, and therefore the check step is skipped"
+            );
+            return vec![concourse::Version::new(String::from("Open"))];
         }
 
         // construct an issue...
-        let gh_issue = github_issue::Issue::new(source.pat().map(|x| &*x), &source.owner(), &source.repo(), None, None, None, None, source.number(), None);
+        let gh_issue = github_issue::Issue::new(
+            source.pat(),
+            source.owner(),
+            source.repo(),
+            None,
+            None,
+            None,
+            None,
+            source.number(),
+            None,
+        );
         // ...and read the octocrab issue
         let issue = match gh_issue.main(github_issue::Action::Read).await {
             Ok(issue) => issue,
             Err(error) => {
                 println!("{error}");
                 panic!("the check step was unable to read the specified github issue number");
-            },
+            }
         };
 
         // return one sized version vector if issue is open and two sized if closed
@@ -67,7 +71,10 @@ impl concourse_resource::Resource for GithubIssue {
         _version: Self::Version,
         _params: Option<Self::InParams>,
         _output_path: &str,
-    ) -> Result<concourse_resource::InOutput<Self::Version, Self::InMetadata>, Box<dyn std::error::Error>> {
+    ) -> Result<
+        concourse_resource::InOutput<Self::Version, Self::InMetadata>,
+        Box<dyn std::error::Error>,
+    > {
         Ok(concourse_resource::InOutput {
             version: concourse::Version::new(String::from("Open")),
             metadata: None,
@@ -79,7 +86,7 @@ impl concourse_resource::Resource for GithubIssue {
     async fn resource_out(
         source: Option<Self::Source>,
         params: Option<Self::OutParams>,
-        _input_path: &str
+        _input_path: &str,
     ) -> concourse_resource::OutOutput<Self::Version, Self::OutMetadata> {
         // validate source and params
         let source = match source {
@@ -92,24 +99,40 @@ impl concourse_resource::Resource for GithubIssue {
         };
 
         // construct an issue...
-        let gh_issue = github_issue::Issue::new(source.pat().map(|x| &*x), &source.owner(), &source.repo(), Some(&params.title()), params.body().map(|x| &*x), params.labels(), params.assignees(), None, None);
+        let gh_issue = github_issue::Issue::new(
+            source.pat(),
+            source.owner(),
+            source.repo(),
+            Some(params.title()),
+            params.body(),
+            params.labels(),
+            params.assignees(),
+            None,
+            None,
+        );
         // ...and create the octocrab issue
         let issue = match gh_issue.main(github_issue::Action::Create).await {
             Ok(issue) => issue,
             Err(error) => {
                 println!("{error}");
                 panic!("the out/put step was unable to create the associated github issue");
-            },
+            }
         };
 
+        // TODO store issuue number somewhere for subsequent check step
+
+        // return out step output
         concourse_resource::OutOutput {
             version: concourse::Version::new(String::from("Open")),
-            metadata: Some(concourse::OutMetadata::new(issue.number, issue.labels, issue.assignees)),
+            metadata: Some(concourse::OutMetadata::new(
+                issue.number,
+                issue.labels,
+                issue.assignees,
+            )),
         }
     }
 }
 
 // helper functions if we need them
 impl GithubIssue {}
-
-//concourse_resource::create_resource!(GithubIssue);
+concourse_resource::create_resource!(GithubIssue);

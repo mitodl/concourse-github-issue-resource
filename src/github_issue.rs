@@ -7,7 +7,7 @@
 pub(crate) enum Action {
     Create,
     Read,
-    Update
+    Update,
 }
 
 // convert string to IssueState without trait implementations because not allowed TODO error
@@ -20,24 +20,25 @@ fn string_to_issue_state(param: &str) -> octocrab::models::IssueState {
 }
 
 // struct for general interfacing with module
+// the types correspond to octocrab when not advantageous otherwise
 #[derive(Eq, PartialEq, Debug)]
-pub(crate) struct Issue<'issue> {
-    // client
-    pat: Option<&'issue str>,
-    owner: &'issue str,
-    repo: &'issue str,
-    // create and update (create expects String instead of &str, and update expects &[String] instead of Vec<>)
-    title: Option<&'issue str>,
-    body: Option<&'issue str>,
+pub(crate) struct Issue {
+    // client: OctocrabBuilder and issues::IssueHandler
+    pat: Option<String>,
+    owner: String,
+    repo: String,
+    // create and update (octocrab update expects AsRef<str> instead of String and AsRef<[String]> instead of Vec<String>)
+    title: Option<String>,
+    body: Option<String>,
     labels: Option<Vec<String>>,
     assignees: Option<Vec<String>>,
     // read and update
     number: Option<u64>,
     // update
-    state: Option<octocrab::models::IssueState>
+    state: Option<octocrab::models::IssueState>,
 }
 
-impl<'issue> Issue<'issue> {
+impl Issue {
     /// Constructor for the Config struct. Contains all of the members necessary for instantiating a client and performing an action.
     ///
     /// # Examples
@@ -46,15 +47,15 @@ impl<'issue> Issue<'issue> {
     /// let gh_issue = Issue::new(None, "my_org", "my_repo", None, None, None, None, Some(100), None);
     /// ```
     pub(crate) fn new(
-        pat: Option<&'issue str>,
-        owner: &'issue str,
-        repo: &'issue str,
-        title: Option<&'issue str>,
-        body: Option<&'issue str>,
+        pat: Option<String>,
+        owner: String,
+        repo: String,
+        title: Option<String>,
+        body: Option<String>,
         labels: Option<Vec<String>>,
         assignees: Option<Vec<String>>,
         number: Option<u64>,
-        state_string: Option<&'issue str>
+        state_string: Option<&str>,
     ) -> Self {
         // convert state from string to IssueState
         let state = match state_string {
@@ -62,7 +63,17 @@ impl<'issue> Issue<'issue> {
             None => None,
         };
         // return instantiated github issue
-        Self { pat, owner, repo, title, body, labels, assignees, number, state }
+        Self {
+            pat,
+            owner,
+            repo,
+            title,
+            body,
+            labels,
+            assignees,
+            number,
+            state,
+        }
     }
 
     /// Instantiate a reusable Octocrab issues object with input authentication, and an input owner and repo.
@@ -73,16 +84,19 @@ impl<'issue> Issue<'issue> {
     /// let issue = gh_issue.main(Action::Read).await;
     /// ```
     // TODO inconsistent returns
-    pub(crate) async fn main<'octo>(&self, action: Action) -> Result<octocrab::models::issues::Issue, &str> {
+    pub(crate) async fn main<'octo>(
+        &self,
+        action: Action,
+    ) -> Result<octocrab::models::issues::Issue, &str> {
         // instantiate client and issues
-        let client = match self.pat {
+        let client = match &self.pat {
             Some(pat) => octocrab::Octocrab::builder()
-            .personal_token(pat.to_string())
-            .build()
-            .expect("could not authenticate client with Personal Access Token"),
+                .personal_token(pat.to_string())
+                .build()
+                .expect("could not authenticate client with Personal Access Token"),
             None => octocrab::Octocrab::default(),
         };
-        let issues = client.issues(self.owner, self.repo);
+        let issues = client.issues(&self.owner, &self.repo);
         // execute action and assign returned issue
         let issue = match action {
             // create an issue
@@ -99,16 +113,19 @@ impl<'issue> Issue<'issue> {
     }
 
     // create a github issue according to configuration
-    async fn create<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
+    async fn create<'octo>(
+        &self,
+        issues: octocrab::issues::IssueHandler<'octo>,
+    ) -> Result<octocrab::models::issues::Issue, &str> {
         // validate a title was specified
-        match self.title {
+        match &self.title {
             // title specified
             Some(title) => {
                 // build the issue
                 let mut issue = issues.create(title);
                 // ... with optional parameters
                 if self.body.is_some() {
-                    issue = issue.body(self.body.unwrap());
+                    issue = issue.body(self.body.as_ref().unwrap());
                 }
                 if self.labels.is_some() {
                     issue = issue.labels(self.labels.clone().unwrap());
@@ -125,19 +142,22 @@ impl<'issue> Issue<'issue> {
                         println!("the issue could not be created");
                         println!("{error}");
                         return Err("issue not created");
-                    },
+                    }
                 }
-            },
+            }
             // title unspecified
             None => {
                 println!("a title was not specified, and so an issue could not be created");
                 return Err("title unspecified");
-            },
+            }
         }
     }
 
     // read a github issue according to configuration
-    async fn read<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
+    async fn read<'octo>(
+        &self,
+        issues: octocrab::issues::IssueHandler<'octo>,
+    ) -> Result<octocrab::models::issues::Issue, &str> {
         // validate an issue number was specified
         match self.number {
             // issue number specified
@@ -150,7 +170,7 @@ impl<'issue> Issue<'issue> {
                         println!("the issue number {number} could not be retrieved");
                         println!("{error}");
                         return Err("unknown issue state");
-                    },
+                    }
                 };
             }
             // issue number unspecified
@@ -163,7 +183,10 @@ impl<'issue> Issue<'issue> {
 
     // update a github issue according to configuration
     // TODO: could get and then append instead of overwriting
-    async fn update<'octo>(&self, issues: octocrab::issues::IssueHandler<'octo>) -> Result<octocrab::models::issues::Issue, &str> {
+    async fn update<'octo>(
+        &self,
+        issues: octocrab::issues::IssueHandler<'octo>,
+    ) -> Result<octocrab::models::issues::Issue, &str> {
         // validate an issue number was specified
         match self.number {
             // issue number specified
@@ -172,10 +195,10 @@ impl<'issue> Issue<'issue> {
                 let mut issue = issues.update(number);
                 // ... with optional parameters
                 if self.title.is_some() {
-                    issue = issue.title(self.title.unwrap());
+                    issue = issue.title(self.title.as_ref().unwrap());
                 }
                 if self.body.is_some() {
-                    issue = issue.body(self.body.unwrap());
+                    issue = issue.body(self.body.as_ref().unwrap());
                 }
                 if self.state.is_some() {
                     issue = issue.state(self.state.clone().unwrap());
@@ -197,14 +220,14 @@ impl<'issue> Issue<'issue> {
                         println!("the issue number {number} could not be updated");
                         println!("{error}");
                         return Err("issue not updated");
-                    },
+                    }
                 }
-            },
+            }
             // issue number unspecified
             None => {
                 println!("an issue number was not specified, and so an issue could not be updated");
                 return Err("issue number unspecified");
-            },
+            }
         }
     }
 }
