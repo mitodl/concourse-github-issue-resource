@@ -8,7 +8,7 @@ use concourse_resource::IntoMetadataKV;
 
 // standard concourse structs
 // check input and (vec seralized to list) output, out output
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Eq, PartialEq, Serialize, Deserialize, Debug)]
 pub(crate) struct Version {
     state: String,
 }
@@ -81,7 +81,7 @@ impl OutParams {
 }
 
 // out output TODO ask for other desired information in metadata
-#[derive(Serialize, Debug, IntoMetadataKV)]
+#[derive(Eq, PartialEq, Serialize, Debug, IntoMetadataKV)]
 pub(crate) struct OutMetadata {
     number: u64,
     labels: Vec<octocrab::models::Label>,
@@ -107,4 +107,65 @@ impl OutMetadata {
             assignees,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version_new() {
+        assert_eq!(
+            Version::new(String::from("Open")),
+            Version {
+                state: String::from("Open")
+            },
+            "version could not be constructed with the correct issue state",
+        );
+    }
+
+    #[test]
+    fn test_source_owner() {
+        assert_eq!(
+            Source {
+                pat: None,
+                owner: String::from("myorg"),
+                repo: String::from("myrepo"),
+                number: None,
+            }.owner,
+            String::from("myorg"),
+            "reader for source owner did not return expected member value"
+        )
+    }
+
+    #[test]
+    fn test_outparams_title() {
+        assert_eq!(
+            OutParams {
+                title: String::from("mytitle"),
+                body: None,
+                labels: None,
+                assignees: None,
+            }.title,
+            String::from("mytitle"),
+            "reader for outparams title did not return expected member value"
+        )
+    }
+
+    /*#[test]
+    fn test_outmetadata_new() {
+        assert_eq!(
+            OutMetadata::new(
+                5,
+                vec![octocrab::models::Author {}],
+                vec![octocrab::models::Label {}]
+            ),
+            OutMetadata {
+                number: 5,
+                labels: vec![octocrab::models::Author {}],
+                assignees: vec![octocrab::models::Label {}]
+            },
+            "outmetadata could not be constructed with the correct values"
+        )
+    }*/
 }
