@@ -31,7 +31,7 @@ The `check` step determines the state of the specified Github issue. If the stat
 
 Closed:
 ```json
-[{"state":"Open"},{"version":"Closed"}]
+[{"state":"Open"},{"state":"Closed"}]
 ```
 
 Open:

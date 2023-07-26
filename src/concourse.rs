@@ -27,7 +27,7 @@ impl Version {
 }
 
 // check and out input
-#[derive(Deserialize, Debug)]
+#[derive(Eq, PartialEq, Deserialize, Debug)]
 pub(crate) struct Source {
     // client and issues
     pat: Option<String>,
@@ -54,7 +54,7 @@ impl Source {
 }
 
 // out input
-#[derive(Deserialize, Debug, Default)]
+#[derive(Eq, PartialEq, Deserialize, Debug, Default)]
 #[serde(default)]
 pub(crate) struct OutParams {
     // title and body later converted to &str
@@ -80,7 +80,7 @@ impl OutParams {
     }
 }
 
-// out output TODO ask for other desired information in metadata
+// out output
 #[derive(Eq, PartialEq, Serialize, Debug, IntoMetadataKV)]
 pub(crate) struct OutMetadata {
     number: u64,
@@ -112,6 +112,7 @@ impl OutMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // TODO migrate serde_json tests from main to here
 
     #[test]
     fn test_version_new() {
@@ -123,6 +124,18 @@ mod tests {
             "version could not be constructed with the correct issue state",
         );
     }
+    #[test]
+    fn test_version_deserialize() {
+        let version = serde_json::from_str::<Version>("{\"state\": \"Closed\"}")
+            .expect("version could not be deserialized");
+        assert_eq!(
+            version,
+            Version {
+                state: String::from("Closed")
+            },
+            "version did not contain the expected member values",
+        )
+    }
 
     #[test]
     fn test_source_owner() {
@@ -132,9 +145,31 @@ mod tests {
                 owner: String::from("myorg"),
                 repo: String::from("myrepo"),
                 number: None,
-            }.owner,
+            }
+            .owner,
             String::from("myorg"),
             "reader for source owner did not return expected member value"
+        )
+    }
+    #[test]
+    fn test_source_deserialize() {
+        let json_input = r#"
+{
+    "owner": "mitodl",
+    "repo": "ol-infrastructure",
+    "number": 1
+}"#;
+        let source =
+            serde_json::from_str::<Source>(json_input).expect("source could not be deserialized");
+        assert_eq!(
+            source,
+            Source {
+                pat: None,
+                owner: String::from("mitodl"),
+                repo: String::from("ol-infrastructure"),
+                number: Some(1),
+            },
+            "source did not contain the expected member values",
         )
     }
 
@@ -146,9 +181,34 @@ mod tests {
                 body: None,
                 labels: None,
                 assignees: None,
-            }.title,
+            }
+            .title,
             String::from("mytitle"),
             "reader for outparams title did not return expected member value"
+        )
+    }
+    #[test]
+    fn test_outparams_deserialize() {
+        let json_input = r#"
+{
+    "title": "my_issue",
+    "body": "approve the concourse step",
+    "assignees": ["my_user_one", "my_user_two"]
+}"#;
+        let out_params = serde_json::from_str::<OutParams>(json_input)
+            .expect("outparams could not be deserialized");
+        assert_eq!(
+            out_params,
+            OutParams {
+                title: String::from("my_issue"),
+                body: Some(String::from("approve the concourse step")),
+                labels: None,
+                assignees: Some(vec![
+                    String::from("my_user_one"),
+                    String::from("my_user_two")
+                ]),
+            },
+            "out params did not contain the expected member values",
         )
     }
 

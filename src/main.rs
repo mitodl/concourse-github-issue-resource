@@ -138,4 +138,45 @@ impl concourse_resource::Resource for GithubIssue {
 
 // helper functions if we need them
 impl GithubIssue {}
+// macro to populate the concourse functions
 concourse_resource::create_resource!(GithubIssue);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resource_check() {
+        // validate basic check reading from mitodl/ol-infrastructure issue 1
+        // concourse pipeline json input
+        let source_input = r#"
+{
+    "owner": "mitodl",
+    "repo": "ol-infrastructure",
+    "number": 1
+}"#;
+        let version_input = r#"
+{
+    "state": "Closed"
+}"#;
+        // deserialize version and source for inputs
+        let source = serde_json::from_str::<<GithubIssue as concourse_resource::Resource>::Source>(
+            source_input,
+        )
+        .expect("source could not be deserialized");
+        let version =
+            serde_json::from_str::<<GithubIssue as concourse_resource::Resource>::Version>(
+                version_input,
+            )
+            .expect("version could not be deserialized");
+        let version_vec = GithubIssue::resource_check(Some(source), Some(version));
+        // the issue is closed so we expect a size two vec
+        assert_eq!(
+                version_vec,
+                vec![concourse::Version::new(String::from("Open")), concourse::Version::new(String::from("Closed"))],
+                "the resource_check did not return a two size vector of issue states for a closed issue",
+            );
+    }
+
+    // TODO test in
+}
