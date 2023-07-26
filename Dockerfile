@@ -1,9 +1,9 @@
-FROM rust:slim as build
+FROM rust:slim-bookworm as build
 WORKDIR /build
 COPY . .
 RUN cargo build --release
 
-FROM rust:slim
+FROM debian:bookworm-slim
 WORKDIR /opt/resource
-COPY --from=build /build/target/PLACEHOLDER/release/concourse-github-issue main
+COPY --from=build /build/target/release/concourse-github-issue main
 RUN ln -s main check && ln -s main in && ln -s main out
