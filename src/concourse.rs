@@ -112,7 +112,6 @@ impl OutMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // TODO migrate serde_json tests from main to here
 
     #[test]
     fn test_version_new() {

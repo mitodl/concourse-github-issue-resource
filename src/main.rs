@@ -178,5 +178,19 @@ mod tests {
             );
     }
 
-    // TODO test in
+    #[test]
+    fn test_resource_in() {
+        let in_output = GithubIssue::resource_in(
+            None,
+            concourse::Version::new(String::from("Open")),
+            None,
+            "",
+        )
+        .unwrap();
+        assert_eq!(
+            in_output.version,
+            concourse::Version::new(String::from("Open")),
+            "the resource in did not dummy the expected return version output",
+        );
+    }
 }

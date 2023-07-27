@@ -46,11 +46,10 @@ impl Issue {
     /// ```
     /// let gh_issue = Issue::new(None, String::from("my_org"), String::from("my_repo"), None, None, None, None, Some(100), None);
     /// ```
-    // TODO impl into string from &str for convenience?
     pub(crate) fn new(
         pat: Option<String>,
-        owner: String,
-        repo: String,
+        owner: impl Into<String>,
+        repo: impl Into<String>,
         title: Option<String>,
         body: Option<String>,
         labels: Option<Vec<String>>,
@@ -63,6 +62,9 @@ impl Issue {
             Some(state_str) => Some(str_to_issue_state(state_str)),
             None => None,
         };
+        // type conversion traits
+        let owner = owner.into();
+        let repo = repo.into();
         // return instantiated github issue
         Self {
             pat,
@@ -182,7 +184,6 @@ impl Issue {
     }
 
     // update a github issue according to configuration
-    // TODO: could get and then append instead of overwriting
     async fn update<'octo>(
         &self,
         issues: octocrab::issues::IssueHandler<'octo>,
@@ -203,7 +204,7 @@ impl Issue {
                 if self.state.is_some() {
                     issue = issue.state(self.state.clone().unwrap());
                 }
-                // TODO requires converting Option<Vec<String>> to &'a [String] which is horrendous
+                // TODO requires converting Option<Vec<String>> to &'e impl AsRef<[String]> + ?Sized which is horrendous
                 /*if self.labels.is_some() {
                     let labels = self.labels.clone().unwrap();
                     issue = issue.labels(&labels[..]);
@@ -258,8 +259,8 @@ mod tests {
         assert_eq!(
             Issue::new(
                 None,
-                String::from("my_org"),
-                String::from("my_repo"),
+                "my_org",
+                "my_repo",
                 None,
                 None,
                 None,
@@ -285,8 +286,8 @@ mod tests {
         assert_eq!(
             Issue::new(
                 None,
-                String::from("my_org"),
-                String::from("my_repo"),
+                "my_org",
+                "my_repo",
                 Some(String::from("my issue")),
                 Some(String::from("my body")),
                 Some(vec![String::from("label")]),
@@ -315,8 +316,8 @@ mod tests {
         let test = async {
             let gh_issue = Issue::new(
                 None,
-                String::from("mitodl"),
-                String::from("ol-infrastructure"),
+                "mitodl",
+                "ol-infrastructure",
                 None,
                 None,
                 None,
