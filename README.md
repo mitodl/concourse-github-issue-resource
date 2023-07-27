@@ -41,7 +41,7 @@ Open:
 
 ### `in`: currently unused
 
-This accepts no inputs and quickly dummies outputs, and therefore is primarily useful for enforcing a useful `check` step with minimal overhead.
+This ignores any inputs and quickly dummies outputs, and therefore is primarily useful for enforcing a useful `check` step with minimal overhead.
 
 ### `out`: creates a Github issue
 
@@ -91,7 +91,7 @@ jobs:
         title: concourse failed
         body: go fix it
         assignees:
-        - myuser
-        - youruser
+        - my_user
+        - your_user
   - get: githhub-issue-check
 ```

@@ -86,6 +86,7 @@ impl Issue {
     /// ```
     /// let issue = gh_issue.main(Action::Read).await?;
     /// ```
+    #[allow(unreachable_patterns)]
     pub(crate) async fn main<'octo>(
         &self,
         action: Action,
