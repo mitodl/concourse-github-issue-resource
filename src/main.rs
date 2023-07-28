@@ -46,6 +46,7 @@ impl concourse_resource::Resource for GithubIssue {
             None,
             source.number(),
             None,
+            None,
         );
         // ...and read the octocrab github issue
         let issue = match gh_issue.main(github_issue::Action::Read).await {
@@ -107,6 +108,7 @@ impl concourse_resource::Resource for GithubIssue {
             params.body(),
             params.labels(),
             params.assignees(),
+            None,
             None,
             None,
         );

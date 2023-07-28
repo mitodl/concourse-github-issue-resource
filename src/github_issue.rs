@@ -6,6 +6,7 @@
 #[non_exhaustive]
 pub(crate) enum Action {
     Create,
+    List,
     Read,
     Update,
 }
@@ -34,8 +35,10 @@ pub(crate) struct Issue {
     assignees: Option<Vec<String>>,
     // read and update
     number: Option<u64>,
-    // update
+    // update and list
     state: Option<octocrab::models::IssueState>,
+    // create, list, and update
+    milestone: Option<u64>,
 }
 
 impl Issue {
@@ -56,6 +59,7 @@ impl Issue {
         assignees: Option<Vec<String>>,
         number: Option<u64>,
         state_str: Option<&str>,
+        milestone: Option<u64>,
     ) -> Self {
         // convert state from string to IssueState
         let state = match state_str {
@@ -76,6 +80,7 @@ impl Issue {
             assignees,
             number,
             state,
+            milestone,
         }
     }
 
@@ -104,6 +109,8 @@ impl Issue {
         let issue = match action {
             // create an issue
             Action::Create => self.create(issues).await?,
+            // list issues TODO
+            Action::List => return Err("list operation currently not interfaced"),
             // read an issue state
             Action::Read => self.read(issues).await?,
             // update an issue
@@ -170,9 +177,11 @@ impl Issue {
                     Ok(issue) => return Ok(issue),
                     // issue number probably does not exist, or some other error
                     Err(error) => {
-                        println!("the issue number {number} could not be retrieved");
+                        println!(
+                            "the issue number {number} could not be retrieved from the repository"
+                        );
                         println!("{error}");
-                        return Err("unknown issue state");
+                        return Err("unknown issue");
                     }
                 };
             }
@@ -183,6 +192,44 @@ impl Issue {
             }
         }
     }
+
+    // list github issues according to configuration
+    /*async fn list<'octo>(
+        &self,
+        issues: octocrab::issues::IssueHandler<'octo>,
+    ) -> Result<octocrab::Page<octocrab::models::issues::Issue>, &str> {
+        // build the issue pages
+        let mut issue_pages = issues.list();
+        // ... with optional parameters
+        if self.state.is_some() {
+            issue_pages = issue_pages.state(self.state.clone().unwrap());
+        }
+        if self.milestone.is_some() {
+            issue_pages = issue_pages.milestone(self.milestone.unwrap());
+        }
+        if self.assignees.is_some() {
+            issue_pages = issue_pages.assignee(self.assignees.unwrap())
+        }
+        // TODO use current user? if self.creator.is_some() {}
+        // TODO requires converting Option<Vec<String>> to &'d impl AsRef<[String]> + ?Sized which is horrendous
+        /*if self.labels.is_some() {
+            let labels = self.labels.clone().unwrap();
+            issue_pages = issue_pages.labels(&labels[..]);
+        }*/
+        // send and await the issue pages
+        match issue_pages.send().await {
+            // return issue pages
+            Ok(page) => return Ok(page),
+            // issues probably do not exist with given filters, or some other error
+            Err(error) => {
+                println!(
+                    "the issues with the given filters could not be retrieved from the repository"
+                );
+                println!("{error}");
+                return Err("unknown issues");
+            }
+        }
+    }*/
 
     // update a github issue according to configuration
     async fn update<'octo>(
@@ -211,7 +258,8 @@ impl Issue {
                     issue = issue.labels(&labels[..]);
                 }
                 if self.assignees.is_some() {
-                    issue = issue.labels(&self.assignees.unwrap());
+                    let labels = self.assignees.clone().unwrap();
+                    issue = issue.assignees(&assignees[..]);
                 }*/
                 // send and await the issue
                 match issue.send().await {
@@ -267,6 +315,7 @@ mod tests {
                 None,
                 None,
                 Some(100),
+                None,
                 None
             ),
             Issue {
@@ -278,7 +327,8 @@ mod tests {
                 labels: None,
                 assignees: None,
                 number: Some(100),
-                state: None
+                state: None,
+                milestone: None
             },
             "failed to construct Issue for read"
         );
@@ -294,6 +344,7 @@ mod tests {
                 Some(vec![String::from("label")]),
                 Some(vec![String::from("assignee")]),
                 None,
+                None,
                 None
             ),
             Issue {
@@ -305,14 +356,15 @@ mod tests {
                 labels: Some(vec![String::from("label")]),
                 assignees: Some(vec![String::from("assignee")]),
                 number: None,
-                state: None
+                state: None,
+                milestone: None
             },
             "failed to construct Issue for create"
         );
     }
 
     #[test]
-    fn test_issue_main() {
+    fn test_issue_main_read() {
         // validate issue returned when read from main
         let test = async {
             let gh_issue = Issue::new(
@@ -325,6 +377,7 @@ mod tests {
                 None,
                 Some(100),
                 None,
+                None,
             );
             let issue = gh_issue.main(Action::Read).await;
             assert_eq!(
@@ -336,4 +389,7 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(test);
     }
+
+    #[test] //TODO
+    fn test_issue_main_list() {}
 }

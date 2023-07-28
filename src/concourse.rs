@@ -26,7 +26,7 @@ impl Version {
     }
 }
 
-// check and out input
+// check and out input TODO update for new members associated with list, and then update doc
 #[derive(Eq, PartialEq, Deserialize, Debug)]
 pub(crate) struct Source {
     // client and issues
