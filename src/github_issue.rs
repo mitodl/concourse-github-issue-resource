@@ -132,7 +132,8 @@ impl Issue {
             // title specified
             Some(title) => {
                 // build the issue
-                let mut issue = issues.create(title);
+                // createissuebuilder milestone type is impl Into<Option<u64>> so we can build it immediately
+                let mut issue = issues.create(title).milestone(self.milestone);
                 // ... with optional parameters
                 if self.body.is_some() {
                     issue = issue.body(self.body.as_ref().unwrap());
@@ -194,25 +195,29 @@ impl Issue {
     }
 
     // list github issues according to configuration
-    /*async fn list<'octo>(
+    // https://docs.rs/octocrab/latest/octocrab/issues/struct.ListIssuesBuilder.html
+    async fn list<'octo>(
         &self,
         issues: octocrab::issues::IssueHandler<'octo>,
     ) -> Result<octocrab::Page<octocrab::models::issues::Issue>, &str> {
         // build the issue pages
         let mut issue_pages = issues.list();
         // ... with optional parameters
-        if self.state.is_some() {
+        // TODO need issuestate to paramsstate converter
+        /*if self.state.is_some() {
             issue_pages = issue_pages.state(self.state.clone().unwrap());
-        }
+        }*/
         if self.milestone.is_some() {
             issue_pages = issue_pages.milestone(self.milestone.unwrap());
         }
-        if self.assignees.is_some() {
-            issue_pages = issue_pages.assignee(self.assignees.unwrap())
+        /*if self.assignees.is_some() {
+            // assign value of first assignee by unwrapping option, cloning vector to avoid self vector destruction, accessing first item, unwrapping first item, and then referencing for conversion for octocrab trait bound (hooray rust!)
+            let assignee = &self.assignees.unwrap().clone().into_iter().next().unwrap();
+            issue_pages = issue_pages.assignee(assignee);
         }
         // TODO use current user? if self.creator.is_some() {}
         // TODO requires converting Option<Vec<String>> to &'d impl AsRef<[String]> + ?Sized which is horrendous
-        /*if self.labels.is_some() {
+        if self.labels.is_some() {
             let labels = self.labels.clone().unwrap();
             issue_pages = issue_pages.labels(&labels[..]);
         }*/
@@ -229,7 +234,7 @@ impl Issue {
                 return Err("unknown issues");
             }
         }
-    }*/
+    }
 
     // update a github issue according to configuration
     async fn update<'octo>(
@@ -251,6 +256,9 @@ impl Issue {
                 }
                 if self.state.is_some() {
                     issue = issue.state(self.state.clone().unwrap());
+                }
+                if self.milestone.is_some() {
+                    issue = issue.milestone(self.milestone.unwrap());
                 }
                 // TODO requires converting Option<Vec<String>> to &'e impl AsRef<[String]> + ?Sized which is horrendous
                 /*if self.labels.is_some() {

@@ -15,6 +15,8 @@ A [concourse-ci](https://concourse-ci.org) resource for interacting with [Github
 
 - `number`: _optional_ The issue number to read during the `check` step for triggering Concourse pipelines based on the issue state. If this is omitted then the `check` step is skipped.
 
+- `milestone`: _optional_ The milestone number to associate with the issue during creation. This is within `source` and not `params` because it may also be used with `check` in the future.
+
 ### `version`: designates the Github issue state
 
 **parameters**

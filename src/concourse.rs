@@ -26,7 +26,7 @@ impl Version {
     }
 }
 
-// check and out input TODO update for new members associated with list, and then update doc
+// check and out input
 #[derive(Eq, PartialEq, Deserialize, Debug)]
 pub(crate) struct Source {
     // client and issues
@@ -35,6 +35,8 @@ pub(crate) struct Source {
     repo: String,
     // read and update
     number: Option<u64>,
+    // create, list, and update
+    milestone: Option<u64>,
 }
 
 impl Source {
@@ -50,6 +52,9 @@ impl Source {
     }
     pub(crate) fn number(&self) -> Option<u64> {
         return self.number;
+    }
+    pub(crate) fn milestone(&self) -> Option<u64> {
+        return self.milestone;
     }
 }
 
@@ -144,6 +149,7 @@ mod tests {
                 owner: String::from("myorg"),
                 repo: String::from("myrepo"),
                 number: None,
+                milestone: None
             }
             .owner,
             String::from("myorg"),
@@ -167,6 +173,7 @@ mod tests {
                 owner: String::from("mitodl"),
                 repo: String::from("ol-infrastructure"),
                 number: Some(1),
+                milestone: None,
             },
             "source did not contain the expected member values",
         )

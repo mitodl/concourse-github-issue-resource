@@ -110,7 +110,7 @@ impl concourse_resource::Resource for GithubIssue {
             params.assignees(),
             None,
             None,
-            None,
+            source.milestone(),
         );
         // ...and create the octocrab github issue
         let issue = match gh_issue.main(github_issue::Action::Create).await {
