@@ -11,12 +11,26 @@ pub(crate) enum Action {
     Update,
 }
 
-// convert string to IssueState without trait implementations because not allowed
+// convert string to IssueState or params::State without trait implementations because not allowed
 fn str_to_issue_state(param: &str) -> octocrab::models::IssueState {
     match param {
         "Open" => octocrab::models::IssueState::Open,
         "Closed" => octocrab::models::IssueState::Closed,
+        "All" => {
+            println!("All was specified for issue state, and this can only be utilized with issue filtering and not updating");
+            println!("this warning is only valid if the current step is a out/put");
+            octocrab::models::IssueState::Open
+        }
         &_ => panic!("the issue state must be either Open or Closed"),
+    }
+}
+
+fn str_to_params_state(param: &str) -> octocrab::params::State {
+    match param {
+        "Open" => octocrab::params::State::Open,
+        "Closed" => octocrab::params::State::Closed,
+        "All" => octocrab::params::State::All,
+        &_ => panic!("the issue state must be either Open, Closed, or All"),
     }
 }
 
@@ -61,7 +75,7 @@ impl Issue {
         state_str: Option<&str>,
         milestone: Option<u64>,
     ) -> Self {
-        // convert state from string to IssueState
+        // convert state from string to IssueState TODO if update, otherwise if list convert to params state
         let state = match state_str {
             Some(state_str) => Some(str_to_issue_state(state_str)),
             None => None,
@@ -199,32 +213,31 @@ impl Issue {
     async fn list<'octo>(
         &self,
         issues: octocrab::issues::IssueHandler<'octo>,
-    ) -> Result<octocrab::Page<octocrab::models::issues::Issue>, &str> {
+    ) -> Result<octocrab::models::issues::Issue, &str> {
         // build the issue pages
-        let mut issue_pages = issues.list();
+        let mut issue_page = issues.list();
         // ... with optional parameters
-        // TODO need issuestate to paramsstate converter
         /*if self.state.is_some() {
-            issue_pages = issue_pages.state(self.state.clone().unwrap());
+            issue_page = issue_page.state(self.state.clone().unwrap());
         }*/
         if self.milestone.is_some() {
-            issue_pages = issue_pages.milestone(self.milestone.unwrap());
+            issue_page = issue_page.milestone(self.milestone.unwrap());
         }
-        /*if self.assignees.is_some() {
-            // assign value of first assignee by unwrapping option, cloning vector to avoid self vector destruction, accessing first item, unwrapping first item, and then referencing for conversion for octocrab trait bound (hooray rust!)
-            let assignee = &self.assignees.unwrap().clone().into_iter().next().unwrap();
-            issue_pages = issue_pages.assignee(assignee);
+        if self.assignees.is_some() {
+            // assign value of first assignee and use for assignee filter
+            let assignee = &self.assignees.as_ref().unwrap()[0][..];
+            issue_page = issue_page.assignee(assignee);
         }
-        // TODO use current user? if self.creator.is_some() {}
+        // TODO default to current user? octocrab has current auth
         // TODO requires converting Option<Vec<String>> to &'d impl AsRef<[String]> + ?Sized which is horrendous
-        if self.labels.is_some() {
+        /*if self.labels.is_some() {
             let labels = self.labels.clone().unwrap();
-            issue_pages = issue_pages.labels(&labels[..]);
+            issue_page = issue_page.labels(&labels[..]);
         }*/
-        // send and await the issue pages
-        match issue_pages.send().await {
+        // send and await the issue page
+        let page = match issue_page.send().await {
             // return issue pages
-            Ok(page) => return Ok(page),
+            Ok(page) => page,
             // issues probably do not exist with given filters, or some other error
             Err(error) => {
                 println!(
@@ -232,6 +245,18 @@ impl Issue {
                 );
                 println!("{error}");
                 return Err("unknown issues");
+            }
+        };
+        // items member is Page<T> into Vec<T> so we can iter
+        let vec_issues = page.items;
+        // ensure only one issue exists in octocrab::Page<octocrab::models::issues::Issue>
+        match vec_issues.len() {
+            1 => return Ok(vec_issues[0].clone()),
+            _ => {
+                let num = vec_issues.len();
+                println!("expected only one issue to be returned from filtered list");
+                println!("actual number of issues returned was {num}");
+                return Err("unexpected number of issues");
             }
         }
     }
@@ -308,6 +333,13 @@ mod tests {
             octocrab::models::IssueState::Closed,
             "failed to convert Closed str to Closed enum"
         );
+    }
+    #[test]
+    fn test_str_to_params_state() {
+        // octocrab::params::State does not implement Eq
+        str_to_params_state("Open");
+        str_to_params_state("Closed");
+        str_to_params_state("All");
     }
 
     #[test]
